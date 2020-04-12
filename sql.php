@@ -1,9 +1,9 @@
 <?php
 //DB Settings Edit this
-$sqlServer = "127.0.0.1";
-$sqlUser = "dev";
-$sqlPassword = "Qazmko@10";
-$sqlDatabase = "ostest4";
+$sqlServer = "[MYSQL SERVER ADDRESS]";
+$sqlUser = "[DATABASE USER]";
+$sqlPassword = "[DATABASE PASSWORD]";
+$sqlDatabase = "[DATABASE NAME]";
 //Dont Edit enyting from this point down.
 //Create Table SQL
 $createTables = array (
