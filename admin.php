@@ -75,6 +75,11 @@ if (isset($_POST['action'])) {
     foreach ($_POST['awnsers'] as $uaid => $uAwnser) {
       updateAwnsers((int)$uaid, $uAwnser);
     }
+
+    if (isset($_POST['updateTestName']) and isset($_POST['updateTestDescription']) and isset($_POST['updateTestTime']) and isset($_POST['tid'])) {
+      updateTestDetails($_POST['tid'], $_POST['updateTestName'], $_POST['updateTestDescription'], $_POST['updateTestTime']);
+    }
+
   } elseif ($_POST['action'] == "update-settings") {
     foreach ( getSettings() as $settingsNameCheck => $settingsValueCheck)
       if (isset($_POST[$settingsNameCheck])) {
@@ -344,21 +349,6 @@ $testResults = complileAdminResultsByTest();
             <!-- results content -->
             <div class="tab-pane container fade" id="results">
               <!-- Nav pills -->
-              <!-- <ul class="nav nav-pills">
-                <li class="nav-item">
-                  <a class="nav-link active" data-toggle="pill" href="#testResults"><i class="fas fa-tasks"></i> Tests</a>
-                </li>
-                <li class="nav-item">
-                  <a class="nav-link" data-toggle="pill" href="#participants"><i class="fas fa-user"></i> Participants</a>
-                </li>
-                <li class="nav-item">
-                  <a class="nav-link disabled" data-toggle="pill" href="#passed"><i class="fas fa-check-circle"></i> Passed</a>
-                </li>
-                <li class="nav-item">
-                  <a class="nav-link disabled" data-toggle="pill" href="#failed"><i class="fas fa-times-circle"></i> Failed</a>
-                </li>
-              </ul> -->
-
               <!-- Tab panes -->
               <div class="tab-content">
                 <div class="tab-pane container active" id="testResults">

@@ -1,9 +1,9 @@
 <?php
 //DB Settings Edit this
-$sqlServer = "[MYSQL SERVER ADDRESS]";
-$sqlUser = "[DATABASE USER]";
-$sqlPassword = "[DATABASE PASSWORD]";
-$sqlDatabase = "[DATABASE NAME]";
+$sqlServer = "<SQL_HOST>";
+$sqlUser = "<SQL_USER>";
+$sqlPassword = "<SQL_PASSWORD>";
+$sqlDatabase = "<SQL_DATABASE>";
 //Dont Edit enyting from this point down.
 //Create Table SQL
 $createTables = array (
@@ -90,7 +90,7 @@ if (mysqli_num_rows($querySettingsSQL) > 0) {
     define("debug", '1');
 }
 //Setup DB
-if (setupDB != 0) {
+if (setupDB == 1) {
   set_time_limit(360);
   //Create Tables
   foreach ($createTables as $tableName => $tableSQL) {
@@ -756,6 +756,8 @@ function complileAdminResultsByTest() {
     //Start building the results into usable array that will be retund by function
     $adminResultsList = '';
     while ($getParticipants = mysqli_fetch_assoc($getParticipantsResults)) {
+      $countCorrect = 0;
+      $countQuestions = 0;
       $countParticipants = $countParticipants + 1;
       $resultsByTest['test'][$tid]['partispans']['count'] = $countParticipants;
       $pid = $getParticipants['id'];
@@ -829,6 +831,32 @@ function getSettings() {
     }
   }
   return $settingsData;
+}
+//update test details
+function updateTestDetails($tid, $name, $description, $time) {
+  global $debugLog, $sqlConnectStart;
+  //Validate inputs
+  if (is_numeric($tid)) {
+    $testID = $tid;
+  }
+  if (preg_match('/^[a-z0-9 .\-]+$/i', $name)) {
+    $testName = $name;
+  }
+  if (preg_match('/^[a-z0-9 .\-]+$/i', $description)) {
+    $testDescription = $description;
+  }
+  if (is_numeric($time)) {
+    $testTime = $time;
+  }
+
+  if (isset($testID) and isset($testName) and isset($testDescription) and isset($testTime)) {
+    $updateTestSQL = "UPDATE test SET name='$testName', description='$testDescription', time='$testTime' WHERE id=$testID";
+    if ($queryUpdateTestSQL = mysqli_query($sqlConnectStart, $updateTestSQL)) {
+      return true;
+    } else {
+      return false;
+    }
+  }
 }
 //Close DB
 function closeDB() {
