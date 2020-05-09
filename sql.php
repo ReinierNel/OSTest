@@ -1,9 +1,25 @@
 <?php
 //DB Settings Edit this
-$sqlServer = "<SQL_HOST>";
-$sqlUser = "<SQL_USER>";
-$sqlPassword = "<SQL_PASSWORD>";
-$sqlDatabase = "<SQL_DATABASE>";
+if (getenv("ostest_use_env_var") == 'true') {
+  /* Set the following environment variable to use instead of static settings
+    export ostest_use_env_var=true
+    export ostest_sqlserver=[your db server address]
+    export ostest_sqluser=[your db user]
+    export ostest_sqlpwd=[your db user password]
+    expose ostest_sqldb=[the db name]
+  */
+  $sqlServer = getenv('ostest_sqlserver');
+  $sqlUser = getenv('sqluser');
+  $sqlPassword = getenv('ostest_sqlpwd');
+  $sqlDatabase = getenv('ostest_sqldb');
+} else {
+  //edit this for manual
+  $sqlServer = "127.0.0.1";
+  $sqlUser = "dev";
+  $sqlPassword = "Qazmko@10";
+  $sqlDatabase = "ostest7";
+}
+
 //Dont Edit enyting from this point down.
 //Create Table SQL
 $createTables = array (
@@ -13,7 +29,8 @@ $createTables = array (
   'participants' => "CREATE TABLE IF NOT EXISTS `$sqlDatabase`.`participants` ( `id` INT NOT NULL AUTO_INCREMENT , `name` TEXT NOT NULL , `email` TEXT NOT NULL , `date_created` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP , `test_id` INT NOT NULL , PRIMARY KEY (`id`)) ENGINE = InnoDB",
   'makrs' => "CREATE TABLE IF NOT EXISTS `$sqlDatabase`.`marks` ( `id` INT NOT NULL AUTO_INCREMENT , `participants_id` INT NOT NULL , `answers_id` INT NOT NULL , `questions_id` INT NOT NULL , `test_id` INT NOT NULL , `date_created` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP , PRIMARY KEY (`id`)) ENGINE = InnoDB",
   'settings' => "CREATE TABLE `$sqlDatabase`.`settings` ( `name` TEXT NOT NULL , `value` TEXT NOT NULL , UNIQUE `settings_name` (`name`)) ENGINE = InnoDB",
-  'complete' => "CREATE TABLE `$sqlDatabase`.`complete` ( `id` INT NOT NULL AUTO_INCREMENT , `date_created` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP , `participants_id` INT NOT NULL , `test_id` INT NOT NULL , `cheated` TINYINT NOT NULL DEFAULT '0', PRIMARY KEY (`id`)) ENGINE = InnoDB"
+  'complete' => "CREATE TABLE `$sqlDatabase`.`complete` ( `id` INT NOT NULL AUTO_INCREMENT , `date_created` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP , `participants_id` INT NOT NULL , `test_id` INT NOT NULL , `cheated` TINYINT NOT NULL DEFAULT '0', PRIMARY KEY (`id`)) ENGINE = InnoDB",
+  'admin' => "CREATE TABLE `$sqlDatabase`.`admin` ( `id` INT NOT NULL AUTO_INCREMENT , `username` TINYTEXT NOT NULL UNIQUE, `hash` TEXT NOT NULL , `date_created` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP , PRIMARY KEY (`id`)) ENGINE = InnoDB"
 );
 //Constraints between tables SQL
 $createConstraints = array (
@@ -37,7 +54,8 @@ $createSettings = array (
   'passMakr' => "INSERT INTO `settings` (`name`, `value`) VALUES ('passMark', '50')",
   'resultsDetails' => "INSERT INTO `settings` (`name`, `value`) VALUES ('resultsDetails', '1')",
   'testInstruction' => "INSERT INTO `settings` (`name`, `value`) VALUES ('testInstruction', 'Once the time for the test has hit 0 it will automatically submit. Clicking away or using ALT + TAB will result in a test marked as cheated.')",
-  'resultsInstructions' => "INSERT INTO `settings` (`name`, `value`) VALUES ('resultsInstructions', 'Your test results are saved, Click on go back to do another test.')"
+  'resultsInstructions' => "INSERT INTO `settings` (`name`, `value`) VALUES ('resultsInstructions', 'Your test results are saved, Click on go back to do another test.')",
+  'adminUser' => "INSERT INTO `admin` (`id`, `username`, `hash`, `date_created`) VALUES (NULL, 'admin', '\$2y\$05\$UYVUFlgZgBTBxJ\.rogrfJuET87mnmf6vvHJB8omKwCg0gBtVU94u2', current_timestamp())"
 );
 //example data for testing. and also not to error out the script when setting up the db for first time
 $demoData = array (
@@ -128,6 +146,65 @@ if (setupDB == 1) {
   die(header("Refresh:0"));
 }
 //START SQL Functions
+//Auth function
+function userAuth($login, $username, $hash) {
+  global $debugLog, $sqlConnectStart;
+    $options = [
+      'cost' => 5,
+    ];
+
+    if (ctype_alnum($username)) {
+      $user = $username;
+    }
+
+    if (isset($hash)) {
+      $pwd = $hash;
+    }
+
+    if ($login == 'login') {
+      if (isset($user) and isset($pwd)) {
+        $getAdmin = "SELECT username, hash, date_created FROM admin WHERE username = '$user' LIMIT 1";
+        $getUserIDResults = mysqli_query($sqlConnectStart, $getAdmin);
+        if (mysqli_num_rows($getUserIDResults) > 0) {
+          $userhash = mysqli_fetch_assoc($getUserIDResults);
+          $user_passwordHash = password_hash($pwd, PASSWORD_BCRYPT, $options);
+          $validate_password = password_verify($pwd, $user_passwordHash);
+
+          if($validate_password) {
+            if (!session_id()) {
+              session_start();
+            }
+            $_SESSION["auth"] = hash('md5', $user);
+            return true;
+          } else {
+            $debugLog[] ='Unable to validate the password';
+            return false;
+          }
+        } else {
+          return false;
+        }
+      }
+  } elseif ($login == 'logout') {
+    session_unset();
+    session_destroy();
+    return true;
+  } elseif ($login == 'new') {
+    $hashedPwd = password_hash($pwd, PASSWORD_BCRYPT, $options);
+    $newAdminSQL = "INSERT INTO admin (username, hash) VALUES ('$user', '$hashedPwd')";
+    if (mysqli_query($sqlConnectStart, $newAdminSQL)) {
+      return true;
+    } else {
+      return false;
+    }
+  } elseif ($login == 'remove') {
+    $delAdminSQL = "DELETE FROM admin WHERE id = $user";
+    if (mysqli_query($sqlConnectStart, $delAdminSQL)) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+}
 //net tets insert function
 function newTest($testName, $testDescription, $testTime) {
   //Removed validtation from function, will add validation on before the function is called
@@ -858,6 +935,20 @@ function updateTestDetails($tid, $name, $description, $time) {
     }
   }
 }
+//getAdminUsers
+function getAdmin() {
+  global $debugLog, $sqlConnectStart;
+  $getAdminSQL = "SELECT * FROM admin";
+  $queryAdminSQL = mysqli_query($sqlConnectStart, $getAdminSQL);
+  if (mysqli_num_rows($queryAdminSQL) > 0) {
+    while ($admin = mysqli_fetch_assoc($queryAdminSQL)) {
+      $adminData[$admin['id']]['name'] = $admin['username'];
+      $adminData[$admin['id']]['date'] = $admin['date_created'];
+    }
+  }
+  return $adminData;
+}
+
 //Close DB
 function closeDB() {
   global $debugLog, $sqlConnectStart;

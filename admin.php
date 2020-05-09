@@ -1,4 +1,11 @@
 <?php
+if (!session_id()) {
+  session_start();
+}
+//Redirect to loing if no auth session data
+if (!isset($_SESSION['auth'])) {
+  die(header('Location: login.php'));
+}
 // DO NOT REMOVE
 require('sql.php');
 //New test Post
@@ -87,6 +94,20 @@ if (isset($_POST['action'])) {
       }
   }
 }
+
+//remove admin
+if (isset($_POST['removeAdmin'])) {
+  if (is_numeric($_POST['removeAdmin'])) {
+    userAuth('remove', $_POST['removeAdmin'], $_POST['removeAdmin']);
+  }
+}
+//add admin
+if (isset($_POST['newAdmin'])) {
+  if (ctype_alnum($_POST['newAdminName']) and isset($_POST['newAdminPassword'])) {
+    userAuth('new', $_POST['newAdminName'], $_POST['newAdminPassword']);
+  }
+}
+
 //get test details from db this sould be run last in the php block
 $testDetails = getTest();
 $testResults = complileAdminResultsByTest();
@@ -129,6 +150,12 @@ $testResults = complileAdminResultsByTest();
           </li>
           <li class="nav-item">
             <a class="nav-link" data-toggle="tab" href="#settings"><i class="fas fa-cog"></i> Settings</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" data-toggle="tab" href="#admin"><i class="fas fa-user"></i> Users</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="login.php?logout=true"><i class="fas fa-times"></i> Logout</a>
           </li>
         </ul>
         <div style="padding-bottom: 30px;">
@@ -190,8 +217,44 @@ $testResults = complileAdminResultsByTest();
           </div>
         </div>
       </div>
+    <!-- add new admin modal -->
+    <div class="modal" id="newAdmin">
+        <div class="modal-dialog modal-xl">
+          <div class="modal-content">
+            <form method="post">
+            <!-- Modal Header -->
+            <div class="modal-header">
+              <h4 class="modal-title">Add a New Admin</h4>
+              <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <!-- Modal body -->
+            <div class="modal-body">
+                <h6>Test Details</h6>
+                <div class="input-group mb-3">
+                  <div class="input-group-prepend">
+                    <span class="input-group-text">Name: </span>
+                  </div>
+                  <input type="text" class="form-control" name="newAdminName">
+                </div>
+                <div class="input-group mb-3">
+                  <div class="input-group-prepend">
+                    <span class="input-group-text">Password: </span>
+                  </div>
+                  <input type="password" class="form-control" name="newAdminPassword">
+                </div>
+              </div>
+            
+            <!-- Modal footer -->
+            <div class="modal-footer">
+              <button type="submit" name="newAdmin" value="1" class="btn btn-primary">Add New Admin</button>
+              <button type="button" onclick="resetQuestion()" class="btn btn-danger" data-dismiss="modal">Close</button>
+            </div>
+            </form>
+          </div>
+        </div>
+      </div>
     <!-- STATIC MODAL END -->
-    <!-- CONTENT START -->
+    
     <div class="row">
         <div class="col-sm-12">
           <div class="tab-content">
@@ -474,6 +537,25 @@ $testResults = complileAdminResultsByTest();
               echo '<button type="submit" name="action" value="update-settings" class="btn btn-primary">Update</button>';
               echo '</form>';
               ?>
+            </div>
+            <!-- USers content -->
+            <div class="tab-pane container fade" id="admin">
+              <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#newAdmin">
+                <i class="fas fa-plus-circle"></i> Add
+              </button>
+              <div style="padding-bottom: 30px;">
+              </div>
+              <table class="table">
+              <th>Username</th><th>Date</th><th>Action</th>
+              <?php
+              $adminData = getAdmin();
+              foreach ($adminData as $adminID => $adminValue) {
+                echo '<tr>';
+                echo '<td>' . $adminValue['name'] . '</td><td>' . $adminValue['date'] . '</td><td><form method="post"><button type="submit" name="removeAdmin" value="' . $adminID . '" class="btn btn-danger">Remove</button></form></td>';
+                echo '</tr>';
+              }
+              ?>
+              </table>
             </div>
           </div>
           <div style="padding-bottom: 30px;">
