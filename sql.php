@@ -9,7 +9,7 @@ if (getenv("ostest_use_env_var") == 'true') {
     expose ostest_sqldb=[the db name]
   */
   $sqlServer = getenv('ostest_sqlserver');
-  $sqlUser = getenv('sqluser');
+  $sqlUser = getenv('ostest_sqluser');
   $sqlPassword = getenv('ostest_sqlpwd');
   $sqlDatabase = getenv('ostest_sqldb');
 } else {
