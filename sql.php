@@ -15,9 +15,9 @@ if (getenv("ostest_use_env_var") == 'true') {
 } else {
   //edit this for manual
   $sqlServer = "127.0.0.1";
-  $sqlUser = "dev";
-  $sqlPassword = "Qazmko@10";
-  $sqlDatabase = "ostest7";
+  $sqlUser = "ostest";
+  $sqlPassword = "ostest";
+  $sqlDatabase = "ostest";
 }
 
 //Dont Edit enyting from this point down.
@@ -28,9 +28,9 @@ $createTables = array (
   'answers' => "CREATE TABLE IF NOT EXISTS `$sqlDatabase`.`answers` ( `id` INT NOT NULL AUTO_INCREMENT , `questions_id` INT NOT NULL , `sequence` INT NOT NULL , `answers` TEXT NOT NULL , `is_correct` TINYINT NOT NULL , `date_created` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP , PRIMARY KEY (`id`)) ENGINE = InnoDB",
   'participants' => "CREATE TABLE IF NOT EXISTS `$sqlDatabase`.`participants` ( `id` INT NOT NULL AUTO_INCREMENT , `name` TEXT NOT NULL , `email` TEXT NOT NULL , `date_created` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP , `test_id` INT NOT NULL , PRIMARY KEY (`id`)) ENGINE = InnoDB",
   'makrs' => "CREATE TABLE IF NOT EXISTS `$sqlDatabase`.`marks` ( `id` INT NOT NULL AUTO_INCREMENT , `participants_id` INT NOT NULL , `answers_id` INT NOT NULL , `questions_id` INT NOT NULL , `test_id` INT NOT NULL , `date_created` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP , PRIMARY KEY (`id`)) ENGINE = InnoDB",
-  'settings' => "CREATE TABLE `$sqlDatabase`.`settings` ( `name` TEXT NOT NULL , `value` TEXT NOT NULL , UNIQUE `settings_name` (`name`)) ENGINE = InnoDB",
-  'complete' => "CREATE TABLE `$sqlDatabase`.`complete` ( `id` INT NOT NULL AUTO_INCREMENT , `date_created` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP , `participants_id` INT NOT NULL , `test_id` INT NOT NULL , `cheated` TINYINT NOT NULL DEFAULT '0', PRIMARY KEY (`id`)) ENGINE = InnoDB",
-  'admin' => "CREATE TABLE `$sqlDatabase`.`admin` ( `id` INT NOT NULL AUTO_INCREMENT , `username` TINYTEXT NOT NULL UNIQUE, `hash` TEXT NOT NULL , `date_created` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP , PRIMARY KEY (`id`)) ENGINE = InnoDB"
+  'settings' => "CREATE TABLE IF NOT EXISTS `$sqlDatabase`.`settings` ( `name` TEXT NOT NULL , `value` TEXT NOT NULL ) ENGINE = InnoDB",
+  'complete' => "CREATE TABLE IF NOT EXISTS `$sqlDatabase`.`complete` ( `id` INT NOT NULL AUTO_INCREMENT , `date_created` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP , `participants_id` INT NOT NULL , `test_id` INT NOT NULL , `cheated` TINYINT NOT NULL DEFAULT '0', PRIMARY KEY (`id`)) ENGINE = InnoDB",
+  'admin' => "CREATE TABLE IF NOT EXISTS `$sqlDatabase`.`admin` ( `id` INT NOT NULL AUTO_INCREMENT , `username` TINYTEXT NOT NULL, `hash` TEXT NOT NULL , `date_created` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP , PRIMARY KEY (`id`)) ENGINE = InnoDB"
 );
 //Constraints between tables SQL
 $createConstraints = array (
@@ -107,43 +107,72 @@ if (mysqli_num_rows($querySettingsSQL) > 0) {
     define("setupDB", '1');
     define("debug", '1');
 }
-//Setup DB
+//Setup DB if setupDB is set to 1
 if (setupDB == 1) {
-  set_time_limit(360);
-  //Create Tables
-  foreach ($createTables as $tableName => $tableSQL) {
-    if (mysqli_query($sqlConnectStart, $tableSQL)) {
-      $debugLog[] = 'Table ' . $tableName . " Created Successfully";
-    } else {
-      $debugLog[] = mysqli_error($sqlConnect);
+  set_time_limit(600);
+  if (!session_id()) {
+    session_start();
+    $_SESSION['setupDB'] = 'tables';
+  }
+  
+  if ($_SESSION['setupDB'] == 'tables') {
+    //Create Tables
+    foreach ($createTables as $tableName => $tableSQL) {
+      if (mysqli_query($sqlConnectStart, $tableSQL)) {
+        $debugLog[] = 'Table ' . $tableName . " Created Successfully";
+        $_SESSION['setupDB'] = 'keys';
+        //echo 'Creating table please wait...';
+      } else {
+        $debugLog[] = mysqli_error($sqlConnect);
+        //echo 'Creating tables please failed';
+      }
     }
   }
-  //Create Constaints
-  foreach ($createConstraints as $constraintName => $constraintSQL) {
-    if (mysqli_query($sqlConnectStart, $constraintSQL)) {
-      $debugLog[] = 'Constaint' . $constraintName . " Created Successfully";
-    } else {
-      $debugLog[] = mysqli_error($sqlConnectStart);
+  
+  if ($_SESSION['setupDB'] == 'keys') {
+    //Create Constaints
+    foreach ($createConstraints as $constraintName => $constraintSQL) {
+      if (mysqli_query($sqlConnectStart, $constraintSQL)) {
+        $debugLog[] = 'Constaint' . $constraintName . " Created Successfully";
+        $_SESSION['setupDB'] = 'settings';
+        //echo 'Creating foregn keys please wait...';
+      } else {
+        $debugLog[] = mysqli_error($sqlConnectStart);
+        //echo 'Creating foregn keys failed...';
+      }
     }
   }
-  //Create Settings
-  foreach ($createSettings as $settingsName => $settingsSQL) {
-    if (mysqli_query($sqlConnectStart, $settingsSQL)) {
-      $debugLog[] = 'Settings' . $settingsName . " Created Successfully";
-    } else {
-      $debugLog[] = mysqli_error($sqlConnectStart);
+  
+  if ($_SESSION['setupDB'] == 'settings') {
+    //Create Settings
+    foreach ($createSettings as $settingsName => $settingsSQL) {
+      if (mysqli_query($sqlConnectStart, $settingsSQL)) {
+        $debugLog[] = 'Settings' . $settingsName . " Created Successfully";
+        $_SESSION['setupDB'] = 'demo';
+        //echo 'Updating Settings table please wait...';
+      } else {
+        $debugLog[] = mysqli_error($sqlConnectStart);
+        //echo 'Updating Settings table failed...';
+      }
     }
   }
-  //Create demo data
-  foreach ($demoData as $dataName => $dataSQL) {
-    if (mysqli_query($sqlConnectStart, $dataSQL)) {
-      $debugLog[] = 'Demo Data ' . $dataName . " Created Successfully";
-    } else {
-      $debugLog[] = mysqli_error($sqlConnectStart);
+
+  if ($_SESSION['setupDB'] == 'demo') {
+    //Create demo data
+    foreach ($demoData as $dataName => $dataSQL) {
+      if (mysqli_query($sqlConnectStart, $dataSQL)) {
+        $debugLog[] = 'Demo Data ' . $dataName . " Created Successfully";
+        //echo 'Creating demo test please wait...';
+        $_SESSION['setupDB'] = 'done';
+      } else {
+        $debugLog[] = mysqli_error($sqlConnectStart);
+        //echo 'Creating demo test failed...';
+      }
     }
   }
-  //
-  die(header("Refresh:0"));
+  //Refresh Page
+  //die(header("Refresh:0"));
+  die('<meta http-equiv="refresh" content="0">');
 }
 //START SQL Functions
 //Auth function
