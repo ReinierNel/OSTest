@@ -14,10 +14,10 @@ if (getenv("ostest_use_env_var") == 'true') {
   $sqlDatabase = getenv('ostest_sqldb');
 } else {
   //edit this for manual
-  $sqlServer = "127.0.0.1";
-  $sqlUser = "ostest";
-  $sqlPassword = "ostest";
-  $sqlDatabase = "ostest";
+  $sqlServer = "EDIT_DB_SRV";
+  $sqlUser = "EDIT_DB_USER";
+  $sqlPassword = "EDIT_DB_PWD";
+  $sqlDatabase = "EDIT_DB_NAME";
 }
 
 //Dont Edit enyting from this point down.
